@@ -1,0 +1,7 @@
+### /etc/torrc ###
+# https://www.torproject.org/docs/tor-manual.html.en
+# CONFIGURE THIS BEFORE RUNNING TOR!
+DataDirectory /data/tor
+
+HiddenServiceDir /data/tor/hidden_service/
+HiddenServicePort ${HS_PORT} ${SERVICE_NAME}:${SERVICE_PORT}

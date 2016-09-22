@@ -1,96 +1,99 @@
-## Tor Relay Server
-[![](https://badge.imagelayers.io/chriswayg/tor-alpine:latest.svg)](https://imagelayers.io/?images=chriswayg/tor-alpine:latest)
+# Tor on Openshift 3
 
-##### A small, efficient and secure Tor relay server Docker image based on Alpine Linux
-*This docker image will run Tor as an unprivileged regular user, as recommended by torproject.org*
+![tor on openshift](tor_openshift.png)
 
-The Tor network relies on volunteers to donate bandwidth. The more people who run relays, the faster the Tor network will be. If you have at least 2 megabits/s for both upload and download, please help out Tor by configuring your Tor to be a relay too.
+This repository contains a Dockerfile for Tor images to be used on Openshift to easily expose an openshift service of your app on Tor and get a .onion URL in return to access it.
 
-![Tor](https://www.torproject.org/images/tor-logo.jpg "Tor logo")
+## cut the blabla, i just want to test it
 
-[`Tor`][1] is free software and an open network that helps you defend against
-traffic analysis, a form of network surveillance that threatens personal
-freedom and privacy, confidential business activities and relationships, and
-state security.
+To start a single ephemeral tor instance :
 
-- Tor prevents people from learning your location or browsing habits.
-- Tor is for web browsers, instant messaging clients, and more.
-- Tor is free and open source for Windows, Mac, Linux/Unix, and Android
+    oc new-app https://github.com/fridim/onionshift -e SERVICE_NAME=ruby-ex,SERVICE_PORT=8080
 
-### Tor configuration
+This will create everything (deployment config, buildconfig, ...) and pod(s) will have a simple torrc based on the template in the repository. It's dead simple, and if you want to add a more complex tor configuration, you can use configMap.
 
-First edit ```./torrc``` on the host to the intended settings:
+You should see the docker build and the final push to the registry. Then a pod onionshift--... should be running.
 
-```
-### /etc/torrc ###
-# https://www.torproject.org/docs/tor-manual.html.en
+Tor will create a private\_key and hostname in the directory specify by <code>HiddenServiceDir</code>.
 
-# CONFIGURE THIS BEFORE RUNNING TOR!
+If you want to be able to reuse the same .onion address over and over across pod creations, you'll need to store it somewhere (mount secrets inside pods, or add persistent volume). But since we are going to use onionbalance, we don't really care about those tor pods, they can be considered ephemeral, as long as the one UP and running are populated correctly in <code>config.yaml</code> of onionbalance.
 
-Nickname I_DID_NOT_SET_A_VALID_NICKNAME
-#ContactInfo email@example.com
+Check the logs :
 
-# Server's public IP Address
-#Address 10.10.10.10
+    $ oc logs onionshift-7-buxlt
+    + cd /data
+    + export SERVICE_NAME=ruby-ex
+    + SERVICE_NAME=ruby-ex
+    + export SERVICE_PORT=8080
+    + SERVICE_PORT=8080
+    + export HS_PORT=80
+    + HS_PORT=80
+    + '[' '!' -e /etc/tor/torrc ']'
+    + envsubst
+    + /usr/bin/tor -f torrc
+    Sep 29 13:05:40.101 [notice] Tor v0.2.8.7 running on Linux with Libevent 2.0.22-stable, OpenSSL 1.0.2j and Zlib 1.2.8.
+    Sep 29 13:05:40.101 [notice] Tor can't help you if you use it wrong! Learn how to be safe at https://www.torproject.org/download/download#warning
+    Sep 29 13:05:40.101 [notice] Read configuration file "/data/torrc".
+    Sep 29 13:05:40.107 [notice] Wow!  I detected that you have 24 CPUs. I will not autodetect any more than 16, though.  If you want to configure more, set NumCPUs in your torrc
+    Sep 29 13:05:40.107 [notice] Opening Socks listener on 127.0.0.1:9050
+    Sep 29 13:05:40.000 [notice] Parsing GEOIP IPv4 file //share/tor/geoip.
+    Sep 29 13:05:40.000 [notice] Parsing GEOIP IPv6 file //share/tor/geoip6.
+    Sep 29 13:05:40.000 [notice] Bootstrapped 0%: Starting
+    Sep 29 13:05:41.000 [notice] Bootstrapped 5%: Connecting to directory server
+    Sep 29 13:05:41.000 [notice] Bootstrapped 10%: Finishing handshake with directory server
+    Sep 29 13:05:41.000 [notice] Bootstrapped 15%: Establishing an encrypted directory connection
+    Sep 29 13:05:41.000 [notice] Bootstrapped 20%: Asking for networkstatus consensus
+    Sep 29 13:05:41.000 [notice] Bootstrapped 25%: Loading networkstatus consensus
+    Sep 29 13:05:41.000 [notice] I learned some more directory information, but not enough to build a circuit: We have no usable consensus.
+    Sep 29 13:05:41.000 [notice] Bootstrapped 40%: Loading authority key certs
+    Sep 29 13:05:41.000 [notice] Bootstrapped 45%: Asking for relay descriptors
+    Sep 29 13:05:41.000 [notice] I learned some more directory information, but not enough to build a circuit: We need more microdescriptors: we have 0/7187, and can only build 0% of likely paths. (We have 0% of guards bw, 0% of midpoint bw, and 0% of exit bw = 0% of path bw.)
+    Sep 29 13:05:41.000 [notice] Bootstrapped 50%: Loading relay descriptors
+    Sep 29 13:05:42.000 [notice] Bootstrapped 56%: Loading relay descriptors
+    Sep 29 13:05:42.000 [notice] Bootstrapped 62%: Loading relay descriptors
+    Sep 29 13:05:42.000 [notice] Bootstrapped 67%: Loading relay descriptors
+    Sep 29 13:05:42.000 [notice] Bootstrapped 75%: Loading relay descriptors
+    Sep 29 13:05:42.000 [notice] Bootstrapped 80%: Connecting to the Tor network
+    Sep 29 13:05:42.000 [notice] Bootstrapped 90%: Establishing a Tor circuit
+    Sep 29 13:05:43.000 [notice] Tor has successfully opened a circuit. Looks like client functionality is working.
+    Sep 29 13:05:43.000 [notice] Bootstrapped 100%: Done
 
-SocksPort 0
-ORPort 9001
+Grab the .onion address:
 
-ExitPolicy reject *:* # no exits allowed
+    $ oc exec onionshift-7-buxlt cat /data/tor/hidden_service/hostname
+    siojz6ucairjccsu.onion
 
-# run tor as a regular user
-User tord
-DataDirectory /home/tord/.tor
+Test it in tor-browser :)
 
-# Set limits
-#RelayBandwidthRate 1024 KB  # Throttle traffic to
-#RelayBandwidthBurst 2048 KB # But allow bursts up to
-#MaxMemInQueues 512 MB # Limit Memory usage to
+![reachable .onion](https://lut.im/73gqgqMrYC/wzxwOJThzR0Jw1WQ)
 
-# Run as obfuscated bridge
-#ServerTransportPlugin obfs3 exec /usr/bin/obfsproxy managed
-#ServerTransportListenAddr obfs3  0.0.0.0:54444
-#BridgeRelay 1
-```
+### Persistent .onion
+If you don't want to setup onionbalance and still want to have persistent .onion address, you'll need to keep the same private\_key of your hidden service accross pod creations.
 
-### Tor docker run example
+The first time you run tor it creates hidden_service directory and generates private\_key.
 
-You can reuse the secret_id_key from a previous tor server installation by mounting it as a volume ```-v ./secret_id_key:/home/tord/.tor/keys/secret_id_key```, to continue with the same ID. 
+Backup the private_key and hostname using rsync:
 
-```
-docker run -d --name=tor_server_1 \
--p 9001:9001 \
--v $PWD/torrc:/etc/tor/torrc \
---restart=always \
-chriswayg/tor-alpine
-```
 
-Check with ```docker logs tor_server_1```. If you see the message ```[notice] Self-testing indicates your ORPort is reachable from the outside. Excellent. Publishing server descriptor.``` at the bottom after quite a while, your server started successfully.
+    fridim@master ~]$ mkdir hidden_service
+    [fridim@master ~]$ oc rsync tor-7-buxlt:/data/tor/hidden_service/ hidden_service/
+    receiving incremental file list
+    ./
+    hostname
+    private_key
 
-### Tor docker-compose.yml example
+    sent 68 bytes  received 1074 bytes  761.33 bytes/sec
+    total size is 910  speedup is 0.80
 
-```
-server:
-  image: chriswayg/tor-alpine
-  ports:
-    - "9001:9001"
-  volumes:
-    - ./torrc:/etc/tor/torrc
-  restart: always
-```
+Create a secret with the private key :
 
-##### start the Tor server
-This will start a new instance of the Tor relay server, show the current fingerprint and display the logs:
-```
-docker-compose up -d
-docker exec tor_server_1 cat /home/tord/.tor/fingerprint
-docker-compose logs
-```
+    [fridim@master hidden_service]$ oc create secret generic privatekey --from-file=privatekey=./private_key
+    secret "privatekey" created
 
-### References
+(You need to specify the secret name as you can't have underscore in the name)
 
-- https://www.torproject.org/docs/tor-relay-debian.html.en
-- https://www.torproject.org/projects/obfsproxy-debian-instructions.html.en
-- Originally forked from: https://github.com/vimagick/dockerfiles/tree/master/tor
+Now mount this private\_key to be used at runtime:
 
-[1]: https://www.torproject.org/
+    oc volume dc/onionshift --add --mount-path=/data/import --secret-name=privatekey
+
+There you go, .onion address will last across pod deletion/creation.
