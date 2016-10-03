@@ -6,8 +6,6 @@
 # * $SERVICE_PORT : service port to expose
 # * $HS_PORT      : hidden_service port reachable via the .onion URL (default: 80)
 
-
-
 FROM alpine
 MAINTAINER fridim fridim@onfi.re
 
@@ -17,6 +15,8 @@ ENV TOR_ENV production
 ENV TOR_VER 0.2.8.7
 ENV TOR_SHA256 ae44e2b699e82db7ff318432fd558dfa941ad154e4055f16d208514951742fc6
 
+ENV ARM_VER 1.4.5.0
+
 ENV TOR_URL https://www.torproject.org/dist/tor-$TOR_VER.tar.gz
 ENV TOR_FILE tor.tar.gz
 ENV TOR_TEMP tor-$TOR_VER
@@ -25,7 +25,6 @@ ENV TOR_TEMP tor-$TOR_VER
 LABEL io.k8s.description="Tor client and hidden service on Openshift" \
       io.k8s.display-name="Tor 0.2.8.7" \
       io.openshift.tags="tor,route"
-
 
 RUN apk add -U build-base \
                gmp-dev \
@@ -58,6 +57,22 @@ RUN apk add -U build-base \
                python-dev \
         && rm -rf /root/.cache/pip/* \
         && rm -rf /var/cache/apk/*
+
+COPY ./damianJohnson.asc /tmp/
+
+RUN cd /tmp \
+    && apk -U add gnupg \
+    && wget https://www.atagar.com/arm/resources/static/arm-${ARM_VER}.tar.bz2 \
+    && wget https://www.atagar.com/arm/resources/static/arm-${ARM_VER}.tar.bz2.asc \
+    && gpg --import damianJohnson.asc \
+    && gpg --verify arm-${ARM_VER}.tar.bz2.asc \
+    && tar xjf /tmp/arm-${ARM_VER}.tar.bz2 \
+    && cd arm \
+    && ./install \
+    && cd /tmp \
+    && rm -rf arm arm-${ARM_VER}.tar.bz2* \
+    && rm -rf damianJohnson.asc /root/.gnupg \
+    && apk del gnupg
 
 # tor will create a rep in /data
 RUN mkdir /data && chmod 777 /data
