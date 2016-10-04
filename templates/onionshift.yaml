@@ -1,0 +1,135 @@
+---
+kind: Template
+apiVersion: v1
+metadata:
+  name: onionshift
+parameters:
+- name: SERVICE_NAME
+  description: "Service name to expose to tor"
+  required: true
+- name: SERVICE_PORT
+  description: "Unique name to identify secrets and configmap for this app"
+  required: true
+- name: HS_PORT
+  description: ".onion port"
+  required: false
+  value: "80"
+- name: PRIVATE_KEY
+  description: "base64 of the generated RSA 1024 key, ex: openssl genrsa 1024 | base64 |tr -d '\\n'"
+  required: true
+- name: UNIQUE_NAME
+  description: "Unique name to identify deploymentconfig and secret"
+  required: false
+  generate: expression
+  from: "[a-z0-9]{5}"
+objects:
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: onionshift
+    name: alpine
+  spec:
+    tags:
+    - annotations:
+        openshift.io/imported-from: alpine
+      from:
+        kind: DockerImage
+        name: alpine
+      generation: null
+      importPolicy: {}
+      name: latest
+  status:
+    dockerImageRepository: ""
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: onionshift
+    name: onionshift
+  spec: {}
+  status:
+    dockerImageRepository: ""
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: onionshift
+    name: onionshift
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: onionshift:latest
+    postCommit: {}
+    resources: {}
+    source:
+      git:
+        uri: https://github.com/fridim/onionshift
+      type: Git
+    strategy:
+      dockerStrategy:
+        from:
+          kind: ImageStreamTag
+          name: alpine:latest
+      type: Docker
+    triggers:
+    - type: ConfigChange
+    - imageChange: {}
+      type: ImageChange
+  status:
+    lastVersion: 0
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: onionshift
+    name: onionshift-${UNIQUE_NAME}
+  spec:
+    replicas: 1
+    selector:
+      app: onionshift
+      deploymentconfig: onionshift-${UNIQUE_NAME}
+    strategy:
+      resources: {}
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: onionshift
+          deploymentconfig: onionshift-${UNIQUE_NAME}
+      spec:
+        containers:
+        - env:
+          - name: SERVICE_NAME
+            value: ${SERVICE_NAME}
+          - name: SERVICE_PORT
+            value: ${SERVICE_PORT}
+          image: onionshift:latest
+          name: onionshift
+          resources: {}
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - onionshift
+        from:
+          kind: ImageStreamTag
+          name: onionshift:latest
+      type: ImageChange

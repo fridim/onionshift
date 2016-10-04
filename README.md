@@ -1,10 +1,25 @@
 # Tor on Openshift 3
 
-![tor on openshift](tor_openshift.png)
+![tor on openshift](images/tor_openshift.png)
 
 This repository contains a Dockerfile for Tor images to be used on Openshift to easily expose an openshift service of your app on Tor and get a .onion URL in return to access it.
 
+See also this [blog post](http://onfi.re/notes/tor_hidden_service_on_openshift_3.html).
+
 ## cut the blabla, i just want to test it
+### Persistent .onion using the template
+
+add the template to your namespace:
+
+    oc create -f https://raw.githubusercontent.com/fridim/onionshift/master/templates/onionshift.yaml
+
+Then use command line <code>oc</code> to process the template or web console :
+
+![template1](images/201610041357_template1.png)
+
+![template onionshift](images/201610041404_onionshift_template.png)
+
+### without template
 
 To start a single ephemeral tor instance :
 
@@ -67,8 +82,9 @@ Test it in tor-browser :)
 
 ![reachable .onion](https://lut.im/73gqgqMrYC/wzxwOJThzR0Jw1WQ)
 
-### Persistent .onion
-If you don't want to setup onionbalance and still want to have persistent .onion address, you'll need to keep the same private\_key of your hidden service accross pod creations.
+### make it persistent
+
+if you created your app using new-app, you can still make it persistent.
 
 The first time you run tor it creates hidden_service directory and generates private\_key.
 
@@ -97,3 +113,19 @@ Now mount this private\_key to be used at runtime:
     oc volume dc/onionshift --add --mount-path=/data/import --secret-name=privatekey
 
 There you go, .onion address will last across pod deletion/creation.
+
+## onionbalance
+
+You can use the openshift template onionbalance.yaml to easily create an onionbalance.
+
+    oc create -f https://raw.githubusercontent.com/fridim/onionshift/master/templates/onionbalance.yaml
+
+Input is : private key, ex:
+
+    openssl genrsa 1024 | base64 | tr -d '\n'
+
+And a list of .onion to loadbalance, in a YAML-compatible format.
+
+Then you can use <code>oc process</code> from the command line or directly from the webconcole :
+
+![tempalte2](images/201610041309_template2.png)
