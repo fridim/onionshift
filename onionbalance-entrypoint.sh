@@ -22,8 +22,8 @@ fi
 # /data/shared is an emptyDir volume mounted by both containers (tor and onionbalance)
 wait_and_copy_cookie() {
     while true; do
-        if [ -e /data/shared/tor/control_auth_cookie ]; then
-            cp /data/shared/tor/control_auth_cookie /data/tor/
+        if [ -e /data/shared/control_auth_cookie ]; then
+            cp /data/shared/control_auth_cookie /data/tor/
             break
         fi
         sleep 5

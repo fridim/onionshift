@@ -83,7 +83,4 @@ COPY ./torrc.template /data/
 COPY ./tor-entrypoint.sh /
 COPY ./onionbalance-entrypoint.sh /
 
-# DirPort, SocksPort, ObfsproxyPort
-EXPOSE 9001 9030 9050 9051 54444
-
 CMD ["/tor-entrypoint.sh"]
