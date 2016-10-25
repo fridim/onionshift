@@ -12,9 +12,8 @@ MAINTAINER fridim fridim@onfi.re
 # update TOR_VER and SHA256 for new version
 # (verify download with gpg signature & create md5)
 ENV TOR_ENV production
-ENV TOR_VER 0.2.8.7
-ENV TOR_SHA256 ae44e2b699e82db7ff318432fd558dfa941ad154e4055f16d208514951742fc6
-
+ENV TOR_VER 0.2.8.9
+ENV TOR_SHA256 3f5c273bb887be4aff11f4d99b9e2e52d293b81ff4f6302b730161ff16dc5316
 ENV ARM_VER 1.4.5.0
 
 ENV TOR_URL https://www.torproject.org/dist/tor-$TOR_VER.tar.gz
@@ -23,7 +22,7 @@ ENV TOR_TEMP tor-$TOR_VER
 
 
 LABEL io.k8s.description="Tor client and hidden service on Openshift" \
-      io.k8s.display-name="Tor 0.2.8.7" \
+      io.k8s.display-name="Tor ${TOR_VER}" \
       io.openshift.tags="tor,route"
 
 RUN apk add -U build-base \
