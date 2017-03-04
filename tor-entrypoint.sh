@@ -22,7 +22,7 @@ fi
 
 if [ ! -e /etc/tor/torrc ]; then
     envsubst < torrc.template > torrc
-    /usr/bin/tor -f torrc
+    exec /usr/bin/tor -f torrc
 else
-    /usr/bin/tor
+    exec /usr/bin/tor
 fi
